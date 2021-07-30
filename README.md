@@ -25,3 +25,6 @@ sample : send-arp wlan0 192.168.10.2 192.168.10.1
 - Socket 통신을 활용하여 내 IP, MAC 주소 받아오기
 - Victim의 Mac을 알아내기 위해 Request-Reply 흐름 파악 (내가 보낸 패킷의 응답만 필터하기)
 - Arp table 조작 패킷 보내기
+
+### feedback
+- 쓸데없는 String -> IP 변환 과정 줄이기
