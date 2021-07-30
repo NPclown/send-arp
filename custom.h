@@ -5,6 +5,8 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include "ip.h"
+#include "mac.h"
 
 typedef struct {
 	char* dev_;
@@ -24,11 +26,11 @@ bool parse(Param* param, int argc, char* argv[]) {
 	return true;
 }
 
-char* myIp(char *interface){
-    struct ifreq ifr;
-    char *ip = (char*)malloc(sizeof(char)*40);
+//굳이 문자열로 바꿔서 다시 보내줄 이유가 없다? IP 구조체를 사용하여 바로 보내자
+Ip myIp(char *interface){
+	struct sockaddr_in *addr;
+	struct ifreq ifr;
     int s;
-
 	s = socket(AF_INET, SOCK_DGRAM, 0); 
 	strncpy(ifr.ifr_name, interface, IFNAMSIZ); 
 	
@@ -36,20 +38,18 @@ char* myIp(char *interface){
 		printf("Interface Error"); 
         exit(-1);
 	}
-
-    inet_ntop(AF_INET, ifr.ifr_addr.sa_data+2, ip,sizeof(struct sockaddr)); 
-
     close(s);
-
-    return ip;
+	addr = (struct sockaddr_in *)&(ifr.ifr_addr);
+	return htonl(addr->sin_addr.s_addr);
 }
 
-char* myMac(char *interface){
+//굳이 문자열로 바꿔서 다시 보내줄 이유가 없다? MAC 구조체를 사용하여 바로 보내자
+Mac myMac(char *interface){
     struct ifreq ifr;
 	int s; 
     unsigned char *temp;
 	char *hwaddr = (char *)malloc(sizeof(char)*6);
-
+	
 	s = socket(AF_INET, SOCK_DGRAM, 0); 
 	strncpy(ifr.ifr_name, interface, IFNAMSIZ); 
 
@@ -58,9 +58,6 @@ char* myMac(char *interface){
         exit(-1);
 	}
     
-    temp = (unsigned char*)ifr.ifr_hwaddr.sa_data;
-    sprintf(hwaddr, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",temp[0],temp[1],temp[2],temp[3],temp[4],temp[5]);
-
     close(s);
-    return hwaddr;
+    return Mac((unsigned char*)ifr.ifr_hwaddr.sa_data);
 }

